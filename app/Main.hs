@@ -1,7 +1,8 @@
 module Main where
 
 import Rewriter
-import Word (stringToWord, showWord)
+import Viz (toViz)
+import Word (showWord, stringToWord)
 import WordReversal (reverseString)
 
 main :: IO ()
@@ -13,8 +14,10 @@ main = do
 handleInput :: String -> IO ()
 handleInput str =
   let word = stringToWord str
-   in let (rWord, _) = reverseWord word
+   in let (rWord, g) = reverseWord word
        in do
+            putStrLn "Grid graphviz is:"
+            putStrLn $ toViz g
             putStrLn "Direct reversed word is:"
             putStrLn $ reverseString str
             putStrLn "Grid reversed word is:"
