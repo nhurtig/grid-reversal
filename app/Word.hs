@@ -1,5 +1,5 @@
 -- This module describes what words are (pretty easy!)
-module Word where
+module Word (showWord, stringToWord, BraidWord) where
 
 import Data.Char (chr, isAlpha, isLower, ord, toLower, toUpper)
 import Grid

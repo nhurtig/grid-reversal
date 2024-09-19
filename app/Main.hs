@@ -1,7 +1,7 @@
 module Main where
 
 import Rewriter
-import Word
+import Word (stringToWord, showWord)
 
 main :: IO ()
 main = do

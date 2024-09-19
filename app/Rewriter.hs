@@ -3,7 +3,7 @@ module Rewriter where
 
 import Grid
 import Rewrites
-import Word
+import Word (BraidWord)
 
 wordToGrid :: BraidWord -> Grid
 wordToGrid = wordToGridHelper 1
