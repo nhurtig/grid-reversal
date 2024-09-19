@@ -19,13 +19,13 @@ gridToWord :: Grid -> BraidWord
 gridToWord (v, edges) = case nextInter edges v of
   Nothing -> [] -- done!
   Just (nextV, gen) ->
-    gen : gridToWord (nextV, edges)
+    gen : Rewriter.gridToWord (nextV, edges)
 
 -- The main function!
 reverseWord :: BraidWord -> (BraidWord, Grid)
 reverseWord w =
   let g = reverseGrid $ wordToGrid w
-   in (gridToWord g, g)
+   in (Rewriter.gridToWord g, g)
 
 reverseGrid :: Grid -> Grid
-reverseGrid = makeRewriter handleRewrite
+reverseGrid = makeRewriter True handleRewrite

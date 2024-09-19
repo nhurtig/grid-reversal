@@ -24,29 +24,27 @@ handleRewrite (Just l1, False) (Just l2, True)
   | otherwise = ((Just .) .) . makeSwapFace l1 l2
 handleRewrite _ _ = \_ _ _ -> Nothing -- Has to be neg, then pos! (aka up, then right)
 
--- Do the rewrite, and if it works, fully simplify
-handleRewriteThenSimplify :: RewriteInfoHandler
-handleRewriteThenSimplify g1 g2 edges v1 v2 = handleRewrite g1 g2 edges v1 v2 >>= Just . simplify
-
 simplify :: Grid -> Grid
-simplify = makeRewriter handleSimplify
+simplify = makeRewriter False handleSimplify
 
 --
 -- General functions
 --
 
 -- Does the Natural->Rewrite function as much
--- as it can
-rewriteMany :: (Natural -> Rewrite) -> Grid -> Grid
-rewriteMany = tryRewrite 0
+-- as it can. Applies simplifier before each
+-- round and at the end
+rewriteMany :: (Grid -> Grid) -> (Natural -> Rewrite) -> Grid -> Grid
+rewriteMany simplifier handler =
+  tryRewrite simplifier 0 handler . simplifier
 
 -- helper for rewriteMany
-tryRewrite :: Natural -> (Natural -> Rewrite) -> Grid -> Grid
-tryRewrite i r g
-  | i >= gridLength g = g -- done!
+tryRewrite :: (Grid -> Grid) -> Natural -> (Natural -> Rewrite) -> Grid -> Grid
+tryRewrite simplifier i r g
+  | i >= gridLength g = simplifier g -- done!
   | otherwise = case r i g of
-      Nothing -> tryRewrite (i + 1) r g -- keep scanning
-      Just newG -> rewriteMany r newG -- restart at 0
+      Nothing -> tryRewrite simplifier (i + 1) r g -- keep scanning
+      Just newG -> rewriteMany simplifier r newG -- restart at 0
 
 extractRewriteInfo :: RewriteInfoHandler -> Natural -> Rewrite
 extractRewriteInfo handler 0 (v, edges) = do
@@ -62,8 +60,10 @@ extractRewriteInfo handler i (v, edges) = do
   Just (v, newEdges)
 
 -- Easy helper function
-makeRewriter :: RewriteInfoHandler -> Grid -> Grid
-makeRewriter handler = rewriteMany $ extractRewriteInfo handler
+makeRewriter :: Bool -> RewriteInfoHandler -> Grid -> Grid
+makeRewriter simp handler =
+  let simplifier = if simp then simplify else id
+   in rewriteMany simplifier $ extractRewriteInfo handler
 
 --
 -- FIRST RULE (sigma cancel)
