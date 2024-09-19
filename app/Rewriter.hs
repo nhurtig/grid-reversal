@@ -1,6 +1,7 @@
 -- This module does the work: it reverses words and emits grids.
 module Rewriter where
 
+import Debug.Trace (trace)
 import Grid (Grid, HEdge (HEdge), VEdge (VEdge), Vertex (Vertex))
 import Numeric.Natural
 import Rewrites (nextInter, rewrite)
@@ -13,24 +14,17 @@ wordToGrid ((l, e) : rest) =
     then Vertex Nothing $ Just $ HEdge (wordToGrid rest) $ Just l
     else Vertex (Just $ VEdge (wordToGrid rest) $ Just l) Nothing
 
--- so the output isn't reversed
 gridToWord :: Grid -> BraidWord
-gridToWord = gridToWordHelper []
-
-gridToWordHelper :: BraidWord -> Grid -> BraidWord
-gridToWordHelper w v = case nextInter v of
+gridToWord v = case nextInter v of
   Nothing -> []
   Just (nextV, mGen) ->
-    gridToWordHelper
-      ( case mGen of
-          Just gen -> gen : w
-          Nothing -> w
-      )
-      nextV
+    case mGen of
+      Just gen -> gen : gridToWord nextV
+      Nothing -> gridToWord nextV
 
 -- The main function!
-reverse :: BraidWord -> (BraidWord, Grid)
-reverse w =
+reverseWord :: BraidWord -> (BraidWord, Grid)
+reverseWord w =
   let g = reverseGrid $ wordToGrid w
    in (gridToWord g, g)
 
@@ -40,13 +34,16 @@ gridLength v = case nextInter v of
   Just (nextV, _) -> 1 + gridLength nextV
 
 reverseGrid :: Grid -> Grid
-reverseGrid v = tryReverseGrid v 0
+reverseGrid v
+  | trace ("rG" ++ show (gridToWord v)) False = undefined
+  | otherwise = tryReverseGrid v 0
 
 -- Tries to reverse the grid at the given index.
 -- If fail, increment. If larger than length, done!
 -- If succeed, reset.
 tryReverseGrid :: Grid -> Natural -> Grid
 tryReverseGrid g i
+--   | trace ("tRG" ++ show (gridToWord g) ++ " " ++ show i) False = undefined
   | i >= gridLength g = g
   | otherwise = case rewrite i g of
       Nothing -> tryReverseGrid g $ i + 1

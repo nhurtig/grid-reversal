@@ -36,7 +36,7 @@ instance Edge VEdge where
   nxt (VEdge n _) = n
   gen (VEdge _ l) = do
     index <- l
-    Just (index, True)
+    Just (index, False)
 
 -- Grids are really just the bottom-left corner of themselves
 type Grid = Vertex
