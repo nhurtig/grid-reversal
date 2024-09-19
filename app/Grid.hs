@@ -39,4 +39,4 @@ instance Edge VEdge where
     Just (index, True)
 
 -- Grids are really just the bottom-left corner of themselves
-newtype Grid = Grid {bottomLeftVertex :: Vertex} deriving (Eq, Show)
+type Grid = Vertex

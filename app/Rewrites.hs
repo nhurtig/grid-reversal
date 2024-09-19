@@ -18,9 +18,9 @@ nextInter (Vertex Nothing Nothing) = Nothing
 -- left corner and taking the "outside", intermediary
 -- route (right if you can, o/w up)
 rewrite :: Natural -> Rewrite
-rewrite i (Grid v) = do
-  newV <- vertexRewrite i v
-  Just $ Grid newV
+rewrite i g = do
+  newV <- vertexRewrite i g
+  Just newV
 
 -- Does the above function, but on a vertex instead of a grid; returns
 -- the new vertex if a rewrite was possible

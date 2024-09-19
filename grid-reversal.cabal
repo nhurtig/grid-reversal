@@ -62,7 +62,7 @@ executable grid-reversal
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: Grid, Rewrites
+    other-modules: Grid, Rewrites, Rewriter, Word
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
