@@ -31,8 +31,8 @@ type Edges = Vertex -> Direction -> Maybe (Vertex, Label)
 -- adds the given edges to the Edges, replacing existing ones
 unionEdges :: [(Vertex, Direction, Label, Vertex)] -> Edges -> Edges
 unionEdges [] edges v d = edges v d
-unionEdges ((v1, d, l, v2) : rest) edges v dir
-  | v1 == v && d == dir = Just (v2, l)
+unionEdges ((v1, dir, l, v2) : rest) edges v d
+  | v1 == v && dir == d = Just (v2, l)
   | otherwise = unionEdges rest edges v d
 
 edgeNext :: Edges -> Vertex -> Direction -> Maybe EdgeInfo
