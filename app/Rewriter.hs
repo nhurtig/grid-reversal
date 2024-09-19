@@ -2,7 +2,6 @@
 module Rewriter where
 
 import Grid
-import Numeric.Natural
 import Rewrites
 import Word
 
