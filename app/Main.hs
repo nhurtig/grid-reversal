@@ -1,7 +1,9 @@
 module Main where
 
-import Data.Char (isAlpha, isLower, ord, toLower)
+import Data.Char (chr, isAlpha, isLower, ord, toLower, toUpper)
+import Grid (Generator)
 import Rewriter (reverseWord)
+import Word (BraidWord)
 
 main :: IO ()
 main = do
@@ -10,6 +12,20 @@ main = do
   handleInput input
 
 handleInput :: String -> IO ()
-handleInput str = let word = map (\x -> (fromIntegral (ord (toLower x) - ord 'a'), isLower x)) $ filter isAlpha str in do
-    print word
-    print $ reverseWord word
+handleInput str =
+  let word = map (\x -> (fromIntegral (ord (toLower x) - ord 'a'), isLower x)) $ filter isAlpha str
+   in let (rWord, grid) = reverseWord word in
+    do
+        putStrLn "Reversed word is:"
+        putStrLn $ showWord rWord
+        putStrLn "Grid is:"
+        print grid
+        putStrLn "Reversed word is:"
+        putStrLn $ showWord rWord
+        print rWord
+
+showWord :: BraidWord -> String
+showWord = map showGen
+
+showGen :: Generator -> Char
+showGen (i, pos) = (if pos then id else toUpper) . chr $ (fromIntegral i + ord 'a')
