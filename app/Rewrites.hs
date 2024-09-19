@@ -6,29 +6,7 @@ import Numeric.Natural
 
 type Rewrite = Grid -> Maybe Grid
 
--- Attempts to apply a reversal rule
--- on the given index starting from the bottom
--- left corner and taking the "outside", intermediary
--- route (right if you can, o/w up)
-rewrite :: Natural -> Rewrite
-rewrite i g = do
-  newG <- rewriteHelper i g
-  Just $ simplify newG -- see bottom of file for simplify
-
--- Does the above function, but doesn't worry about
--- simplification
-rewriteHelper :: Natural -> Rewrite
-rewriteHelper 0 (v, edges) = do
-  (v1, gen1) <- nextInter edges v
-  (v2, gen2) <- nextInter edges v1
-  makeRewrite gen1 gen2 edges v v2
-rewriteHelper i (v, edges) = do
-  -- go to next vertex
-  nextV <- fst <$> nextInter edges v
-  -- do the work, ignoring the passed-up vertex
-  (_, newEdges) <- rewriteHelper (i - 1) (nextV, edges)
-  -- add the new edges, using the passed-up vertex
-  Just (v, newEdges)
+type RewriteInfoHandler = Generator -> Generator -> Edges -> Vertex -> Vertex -> Maybe Grid
 
 -- | x - y |
 metric :: Natural -> Natural -> Natural
@@ -37,14 +15,55 @@ metric x y
   | x < y = y - x
   | otherwise = 0
 
--- If the generators do rewrite, returns a face that points to
--- the given vertex out of the vertices; otherwise Nothing
-makeRewrite :: Generator -> Generator -> Edges -> Vertex -> Vertex -> Maybe Grid
-makeRewrite (Just l1, False) (Just l2, True)
+-- If the generators do rewrite, returns a grid starting with
+-- the first given vertex with the added rewrite; otherwise Nothing
+handleRewrite :: RewriteInfoHandler
+handleRewrite (Just l1, False) (Just l2, True)
   | l1 == l2 = ((Just .) .) . makeCancelFace
   | metric l1 l2 == 1 = ((Just .) .) . makeYBFace l1 l2
   | otherwise = ((Just .) .) . makeSwapFace l1 l2
-makeRewrite _ _ = \_ _ _ -> Nothing -- Has to be neg, then pos! (aka up, then right)
+handleRewrite _ _ = \_ _ _ -> Nothing -- Has to be neg, then pos! (aka up, then right)
+
+-- Do the rewrite, and if it works, fully simplify
+handleRewriteThenSimplify :: RewriteInfoHandler
+handleRewriteThenSimplify g1 g2 edges v1 v2 = handleRewrite g1 g2 edges v1 v2 >>= Just . simplify
+
+simplify :: Grid -> Grid
+simplify = makeRewriter handleSimplify
+
+--
+-- General functions
+--
+
+-- Does the Natural->Rewrite function as much
+-- as it can
+rewriteMany :: (Natural -> Rewrite) -> Grid -> Grid
+rewriteMany = tryRewrite 0
+
+-- helper for rewriteMany
+tryRewrite :: Natural -> (Natural -> Rewrite) -> Grid -> Grid
+tryRewrite i r g
+  | i >= gridLength g = g -- done!
+  | otherwise = case r i g of
+      Nothing -> tryRewrite (i + 1) r g -- keep scanning
+      Just newG -> rewriteMany r newG -- restart at 0
+
+extractRewriteInfo :: RewriteInfoHandler -> Natural -> Rewrite
+extractRewriteInfo handler 0 (v, edges) = do
+  (v1, gen1) <- nextInter edges v
+  (v2, gen2) <- nextInter edges v1
+  handler gen1 gen2 edges v v2
+extractRewriteInfo handler i (v, edges) = do
+  -- go to next vertex
+  nextV <- fst <$> nextInter edges v
+  -- do the work, ignoring the passed-up vertex
+  (_, newEdges) <- extractRewriteInfo handler (i - 1) (nextV, edges)
+  -- add the new edges, using the passed-up vertex
+  Just (v, newEdges)
+
+-- Easy helper function
+makeRewriter :: RewriteInfoHandler -> Grid -> Grid
+makeRewriter handler = rewriteMany $ extractRewriteInfo handler
 
 --
 -- FIRST RULE (sigma cancel)
@@ -98,40 +117,15 @@ makeYBFace lLef lTop = makeHexagon (Just lTop) (Just lLef) (Just lTop) (Just lLe
 -- SIMPLIFY
 --
 
--- Moves epsilons around until it can't any more, then returns
-simplify :: Grid -> Grid
-simplify = trySimplify 0
-
-trySimplify :: Natural -> Grid -> Grid
-trySimplify i g
-  | i >= gridLength g = g -- done!
-  | otherwise = case trySimplifySpot i g of
-      Nothing -> trySimplify (i + 1) g
-      Just newG -> simplify newG
-
--- Analogous to rewriteHelper
-trySimplifySpot :: Natural -> Rewrite
-trySimplifySpot 0 (v, edges) = do
-  (v1, gen1) <- nextInter edges v
-  (v2, gen2) <- nextInter edges v1
-  makeSimplify gen1 gen2 edges v v2
-trySimplifySpot i (v, edges) = do
-  -- go to next vertex
-  nextV <- fst <$> nextInter edges v
-  -- do the work, ignoring the passed-up vertex
-  (_, newEdges) <- trySimplifySpot (i - 1) (nextV, edges)
-  -- add the new edges, using the passed-up vertex
-  Just (v, newEdges)
-
--- Like makeRewrite
-makeSimplify :: Generator -> Generator -> Edges -> Vertex -> Vertex -> Maybe Grid
-makeSimplify (Nothing, False) (l2, True) -- corner starting w/ epsilon
-  =
+-- Like handleRewrite
+handleSimplify :: RewriteInfoHandler
+-- corner starting w/ epsilon
+handleSimplify (Nothing, False) (l2, True) =
   ((Just .) .) . makeMoveDown l2
-makeSimplify (Just l1, False) (Nothing, True) -- corner ending w/ epsilon
-  =
+-- corner ending w/ epsilon
+handleSimplify (Just l1, False) (Nothing, True) =
   ((Just .) .) . makeMoveRight (Just l1)
-makeSimplify _ _ = \_ _ _ -> Nothing -- Has to be neg, then pos! (aka up, then right)
+handleSimplify _ _ = \_ _ _ -> Nothing -- Doesn't match form
 
 makeMoveDown :: Label -> Edges -> Vertex -> Vertex -> Grid
 makeMoveDown lBot = makeSquare lBot Nothing

@@ -29,14 +29,4 @@ reverseWord w =
    in (gridToWord g, g)
 
 reverseGrid :: Grid -> Grid
-reverseGrid v = tryReverseGrid v 0
-
--- Tries to reverse the grid at the given index.
--- If fail, increment. If larger than length, done!
--- If succeed, reset.
-tryReverseGrid :: Grid -> Natural -> Grid
-tryReverseGrid g i
-  | i >= gridLength g = g
-  | otherwise = case rewrite i g of
-      Nothing -> tryReverseGrid g $ i + 1
-      Just newG -> reverseGrid newG
+reverseGrid = makeRewriter handleRewrite
