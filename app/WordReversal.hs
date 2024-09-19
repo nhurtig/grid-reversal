@@ -22,3 +22,6 @@ rWDHelper ((Just l1, False) : (Just l2, True) : rest) = case metric l1 l2 of
 rWDHelper (g : rest) = do
   newRest <- rWDHelper rest
   Just $ g : newRest
+
+reverseString :: String -> String
+reverseString = showWord . reverseWordDirect . stringToWord
