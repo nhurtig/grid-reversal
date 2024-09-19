@@ -6,7 +6,7 @@ import Data.Char (chr, ord)
 import Grid
 
 toViz :: Grid -> String
-toViz (v, edges) = "digraph G {\nlabel=\"right/left=blue, up/down=red, start (leftmost) is bottom-left corner\";\nrankdir=LR;\nnode [style=invis,width=0,height=0,label=\"\"];\nsplines=false;\n" ++ breadthFirstViz [] [v] [] edges ++ "}\n"
+toViz (v, edges) = "digraph G {\nlabel=\"right/left=blue, up/down=red, start (leftmost) is bottom-left corner\";\nrankdir=LR;\nnode [style=invis,width=0,height=0,label=\"\"];\n" ++ breadthFirstViz [] [v] [] edges ++ "}\n"
 
 breadthFirstViz :: [Vertex] -> [Vertex] -> [Vertex] -> Edges -> String
 breadthFirstViz visited (v : rest) toVisit edges
