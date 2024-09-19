@@ -1,6 +1,5 @@
 module Main where
 
-import Data.Char (chr, isAlpha, isLower, ord, toLower, toUpper)
 import Rewriter
 import Word
 
@@ -20,11 +19,3 @@ handleInput str =
             putStrLn "Reversed word is:"
             putStrLn $ showWord rWord
             print rWord
-
-showWord :: BraidWord -> String
-showWord [] = []
-showWord ((Nothing, _) : rest) = showWord rest
-showWord ((Just l, e) : rest) = ((if e then id else toUpper) . chr $ (fromIntegral l + ord 'a')) : showWord rest
-
-stringToWord :: String -> BraidWord
-stringToWord str = map (\x -> (Just $ fromIntegral (ord (toLower x) - ord 'a'), isLower x)) $ filter isAlpha str
