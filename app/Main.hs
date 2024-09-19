@@ -12,7 +12,7 @@ main = do
 
 handleInput :: String -> IO ()
 handleInput str =
-  let word = map (\x -> (Just $ fromIntegral (ord (toLower x) - ord 'a'), isLower x)) $ filter isAlpha str
+  let word = stringToWord str
    in let (rWord, _) = reverseWord word
        in do
             -- putStrLn "Grid is:"
@@ -25,3 +25,6 @@ showWord :: BraidWord -> String
 showWord [] = []
 showWord ((Nothing, _) : rest) = showWord rest
 showWord ((Just l, e) : rest) = ((if e then id else toUpper) . chr $ (fromIntegral l + ord 'a')) : showWord rest
+
+stringToWord :: String -> BraidWord
+stringToWord str = map (\x -> (Just $ fromIntegral (ord (toLower x) - ord 'a'), isLower x)) $ filter isAlpha str
