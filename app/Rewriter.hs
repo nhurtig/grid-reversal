@@ -1,7 +1,6 @@
 -- This module does the work: it reverses words and emits grids.
 module Rewriter where
 
-import Debug.Trace (trace)
 import Grid (Grid, HEdge (HEdge), VEdge (VEdge), Vertex (Vertex))
 import Numeric.Natural
 import Rewrites (nextInter, rewrite)
@@ -34,16 +33,13 @@ gridLength v = case nextInter v of
   Just (nextV, _) -> 1 + gridLength nextV
 
 reverseGrid :: Grid -> Grid
-reverseGrid v
-  | trace ("rG" ++ show (gridToWord v)) False = undefined
-  | otherwise = tryReverseGrid v 0
+reverseGrid v = tryReverseGrid v 0
 
 -- Tries to reverse the grid at the given index.
 -- If fail, increment. If larger than length, done!
 -- If succeed, reset.
 tryReverseGrid :: Grid -> Natural -> Grid
 tryReverseGrid g i
---   | trace ("tRG" ++ show (gridToWord g) ++ " " ++ show i) False = undefined
   | i >= gridLength g = g
   | otherwise = case rewrite i g of
       Nothing -> tryReverseGrid g $ i + 1

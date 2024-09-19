@@ -3,8 +3,6 @@ module Rewrites where
 
 import Grid
 import Numeric.Natural
-import Debug.Trace (trace)
-import Word (BraidWord)
 
 type Rewrite = Grid -> Maybe Grid
 
@@ -31,11 +29,9 @@ nonEpsilon (v, Just g) = Just (v, g) -- found it!
 -- left corner and taking the "outside", intermediary
 -- route (right if you can, o/w up)
 rewrite :: Natural -> Rewrite
-rewrite i g
-  | trace ("rewrite" ++ show (gridToWord g) ++ " " ++ show i) False = undefined
-  | otherwise = do
-      newV <- vertexRewrite i g
-      Just newV
+rewrite i g = do
+  newV <- vertexRewrite i g
+  Just newV
 
 -- Does the above function, but on a vertex instead of a grid; returns
 -- the new vertex if a rewrite was possible
@@ -44,17 +40,12 @@ vertexRewrite 0 v = do
   (v1, mGen1) <- nextInter v
   gen1 <- mGen1
   (v2, gen2) <- nextInterNonEpsilon v1
-  dmakeVertexRewrite gen1 gen2 v v2
+  makeVertexRewrite gen1 gen2 v v2
 vertexRewrite i v = do
   -- go to next vertex
   nextV <- fst <$> nextInter v
   newNextV <- vertexRewrite (i - 1) nextV
   replaceInter v newNextV
-
-dmakeVertexRewrite :: Generator -> Generator -> Vertex -> Vertex -> Maybe Vertex
-dmakeVertexRewrite g g2 v v2
-  | trace ("dmVR" ++ show (g, g2, v, v2)) False = undefined
-  | otherwise = makeVertexRewrite g g2 v v2
 
 -- Replaces the inter branch of this vertex with the new given
 -- one.
@@ -74,7 +65,6 @@ metric x y
 -- the given vertex out of the vertices; otherwise Nothing
 makeVertexRewrite :: Generator -> Generator -> Vertex -> Vertex -> Maybe Vertex
 makeVertexRewrite (l1, False) (l2, True)
-  | trace ("mvr" ++ show (l1, l2)) False = undefined
   | l1 == l2 = (Just .) . makeVertexCancelFace
   | metric l1 l2 == 1 = (Just .) . makeVertexYBFace l1 l2
   | otherwise = (Just .) . makeVertexSwapFace l1 l2
@@ -125,12 +115,3 @@ makeHexagon lBotLef lBotRig lRigBot lRigTop oldBotLef oldTopRig =
 -- the given vertices
 makeVertexYBFace :: Natural -> Natural -> Vertex -> Vertex -> Vertex
 makeVertexYBFace lLef lTop = makeHexagon (Just lTop) (Just lLef) (Just lTop) (Just lLef)
-
--- TODO: delete duped code
-gridToWord :: Grid -> BraidWord
-gridToWord v = case nextInter v of
-  Nothing -> []
-  Just (nextV, mGen) ->
-    case mGen of
-      Just gen -> gen : gridToWord nextV
-      Nothing -> gridToWord nextV
