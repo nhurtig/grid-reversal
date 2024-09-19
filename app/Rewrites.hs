@@ -6,53 +6,29 @@ import Numeric.Natural
 
 type Rewrite = Grid -> Maybe Grid
 
--- Visits the next vertex in the intermediate word (go right if possible,
--- if not go up, if not give up, it's the end
-nextInter :: Vertex -> Maybe EdgeInfo
-nextInter (Vertex _ (Just e)) = Just $ info e
-nextInter (Vertex (Just e) Nothing) = Just $ info e
-nextInter (Vertex Nothing Nothing) = Nothing
-
--- Visits the next vertex in the intermediate word; keeps
--- visiting until it actually finds a generator and then stops
-nextInterNonEpsilon :: Vertex -> Maybe (Vertex, Generator)
-nextInterNonEpsilon (Vertex _ (Just e)) = nonEpsilon $ info e
-nextInterNonEpsilon (Vertex (Just e) Nothing) = nonEpsilon $ info e
-nextInterNonEpsilon (Vertex Nothing Nothing) = Nothing
-
-nonEpsilon :: EdgeInfo -> Maybe (Vertex, Generator)
-nonEpsilon (v, Nothing) = nextInterNonEpsilon v -- keep looking!
-nonEpsilon (v, Just g) = Just (v, g) -- found it!
-
 -- Attempts to apply a reversal rule
 -- on the given index starting from the bottom
 -- left corner and taking the "outside", intermediary
 -- route (right if you can, o/w up)
 rewrite :: Natural -> Rewrite
 rewrite i g = do
-  newV <- vertexRewrite i g
-  Just newV
+  newG <- rewriteHelper i g
+  Just $ simplify newG -- see bottom of file for simplify
 
--- Does the above function, but on a vertex instead of a grid; returns
--- the new vertex if a rewrite was possible
-vertexRewrite :: Natural -> Vertex -> Maybe Vertex
-vertexRewrite 0 v = do
-  (v1, mGen1) <- nextInter v
-  gen1 <- mGen1
-  (v2, gen2) <- nextInterNonEpsilon v1
-  makeVertexRewrite gen1 gen2 v v2
-vertexRewrite i v = do
+-- Does the above function, but doesn't worry about
+-- simplification
+rewriteHelper :: Natural -> Rewrite
+rewriteHelper 0 (v, edges) = do
+  (v1, gen1) <- nextInter edges v
+  (v2, gen2) <- nextInter edges v1
+  makeRewrite gen1 gen2 edges v v2
+rewriteHelper i (v, edges) = do
   -- go to next vertex
-  nextV <- fst <$> nextInter v
-  newNextV <- vertexRewrite (i - 1) nextV
-  replaceInter v newNextV
-
--- Replaces the inter branch of this vertex with the new given
--- one.
-replaceInter :: Vertex -> Vertex -> Maybe Vertex
-replaceInter (Vertex u (Just (HEdge _ l))) newInter = Just $ Vertex u $ Just $ HEdge newInter l
-replaceInter (Vertex (Just (VEdge _ l)) Nothing) newInter = Just $ Vertex (Just $ VEdge newInter l) Nothing
-replaceInter (Vertex Nothing Nothing) _ = Nothing
+  nextV <- fst <$> nextInter edges v
+  -- do the work, ignoring the passed-up vertex
+  (_, newEdges) <- rewriteHelper (i - 1) (nextV, edges)
+  -- add the new edges, using the passed-up vertex
+  Just (v, newEdges)
 
 -- | x - y |
 metric :: Natural -> Natural -> Natural
@@ -63,12 +39,12 @@ metric x y
 
 -- If the generators do rewrite, returns a face that points to
 -- the given vertex out of the vertices; otherwise Nothing
-makeVertexRewrite :: Generator -> Generator -> Vertex -> Vertex -> Maybe Vertex
-makeVertexRewrite (l1, False) (l2, True)
-  | l1 == l2 = (Just .) . makeVertexCancelFace
-  | metric l1 l2 == 1 = (Just .) . makeVertexYBFace l1 l2
-  | otherwise = (Just .) . makeVertexSwapFace l1 l2
-makeVertexRewrite _ _ = \_ _ -> Nothing -- Has to be neg, then pos! (aka up, then right)
+makeRewrite :: Generator -> Generator -> Edges -> Vertex -> Vertex -> Maybe Grid
+makeRewrite (Just l1, False) (Just l2, True)
+  | l1 == l2 = ((Just .) .) . makeCancelFace
+  | metric l1 l2 == 1 = ((Just .) .) . makeYBFace l1 l2
+  | otherwise = ((Just .) .) . makeSwapFace l1 l2
+makeRewrite _ _ = \_ _ _ -> Nothing -- Has to be neg, then pos! (aka up, then right)
 
 --
 -- FIRST RULE (sigma cancel)
@@ -76,18 +52,19 @@ makeVertexRewrite _ _ = \_ _ -> Nothing -- Has to be neg, then pos! (aka up, the
 
 -- Creates a square cell. Given a bottom left corner which is already
 -- connected above to a not-given top left corner which is already
--- connected right to a given top right corner. Returns the new
+-- connected right to a given top right corner. Returns the grid at the
 -- bottom left corner of the cell. Given are also the labels of
 -- the bottom and right sides of the square.
-makeSquare :: Label -> Label -> Vertex -> Vertex -> Vertex
-makeSquare lBot lRig oldBotLef oldTopRig =
-  let botRig = Vertex (Just $ VEdge oldTopRig lRig) Nothing
-   in Vertex (up oldBotLef) (Just $ HEdge botRig lBot)
+makeSquare :: Label -> Label -> Edges -> Vertex -> Vertex -> Grid
+makeSquare lBot lRig edges botLef topRig =
+  let botRig = rightVertex botLef
+   in let newEdges = [(botLef, Rig, lBot, botRig), (botRig, Up, lRig, topRig)]
+       in (botLef, unionEdges newEdges edges)
 
 -- Creates the face from Def 3.2.1 corresponding to sigma cancel, using
 -- the given vertices
-makeVertexCancelFace :: Vertex -> Vertex -> Vertex
-makeVertexCancelFace = makeSquare Nothing Nothing
+makeCancelFace :: Edges -> Vertex -> Vertex -> Grid
+makeCancelFace = makeSquare Nothing Nothing
 
 --
 -- SECOND RULE (sigma swap)
@@ -95,8 +72,8 @@ makeVertexCancelFace = makeSquare Nothing Nothing
 
 -- Creates the face from Def 3.2.1 corresponding to sigma cancel, using
 -- the given vertices
-makeVertexSwapFace :: Natural -> Natural -> Vertex -> Vertex -> Vertex
-makeVertexSwapFace lLef lTop = makeSquare (Just lTop) $ Just lLef
+makeSwapFace :: Natural -> Natural -> Edges -> Vertex -> Vertex -> Grid
+makeSwapFace lLef lTop = makeSquare (Just lTop) $ Just lLef
 
 --
 -- THIRD RULE (yang-baxter)
@@ -104,14 +81,60 @@ makeVertexSwapFace lLef lTop = makeSquare (Just lTop) $ Just lLef
 
 -- Similar to makeSquare, but now puts two edges on the bottom and right each.
 -- Labels are same order, bot left to top right.
-makeHexagon :: Label -> Label -> Label -> Label -> Vertex -> Vertex -> Vertex
-makeHexagon lBotLef lBotRig lRigBot lRigTop oldBotLef oldTopRig =
-  let midRig = Vertex (Just $ VEdge oldTopRig lRigTop) Nothing
-   in let botRig = Vertex (Just $ VEdge midRig lRigBot) Nothing
-       in let botMid = Vertex Nothing (Just $ HEdge botRig lBotRig)
-           in Vertex (up oldBotLef) (Just $ HEdge botMid lBotLef)
+makeHexagon :: Label -> Label -> Label -> Label -> Edges -> Vertex -> Vertex -> Grid
+makeHexagon lBotLef lBotRig lRigBot lRigTop edges botLef topRig =
+  let midBot = rightVertex botLef
+   in let botRig = rightVertex midBot
+       in let midRig = upVertex botRig
+           in let newEdges = [(botLef, Rig, lBotLef, midBot), (midBot, Rig, lBotRig, botRig), (botRig, Up, lRigBot, midRig), (midRig, Up, lRigTop, topRig)]
+               in (botLef, unionEdges newEdges edges)
 
 -- Creates the face from Def 3.2.1 corresponding to sigma cancel, using
 -- the given vertices
-makeVertexYBFace :: Natural -> Natural -> Vertex -> Vertex -> Vertex
-makeVertexYBFace lLef lTop = makeHexagon (Just lTop) (Just lLef) (Just lTop) (Just lLef)
+makeYBFace :: Natural -> Natural -> Edges -> Vertex -> Vertex -> Grid
+makeYBFace lLef lTop = makeHexagon (Just lTop) (Just lLef) (Just lTop) (Just lLef)
+
+--
+-- SIMPLIFY
+--
+
+-- Moves epsilons around until it can't any more, then returns
+simplify :: Grid -> Grid
+simplify = trySimplify 0
+
+trySimplify :: Natural -> Grid -> Grid
+trySimplify i g
+  | i >= gridLength g = g -- done!
+  | otherwise = case trySimplifySpot i g of
+      Nothing -> trySimplify (i + 1) g
+      Just newG -> simplify newG
+
+-- Analogous to rewriteHelper
+trySimplifySpot :: Natural -> Rewrite
+trySimplifySpot 0 (v, edges) = do
+  (v1, gen1) <- nextInter edges v
+  (v2, gen2) <- nextInter edges v1
+  makeSimplify gen1 gen2 edges v v2
+trySimplifySpot i (v, edges) = do
+  -- go to next vertex
+  nextV <- fst <$> nextInter edges v
+  -- do the work, ignoring the passed-up vertex
+  (_, newEdges) <- trySimplifySpot (i - 1) (nextV, edges)
+  -- add the new edges, using the passed-up vertex
+  Just (v, newEdges)
+
+-- Like makeRewrite
+makeSimplify :: Generator -> Generator -> Edges -> Vertex -> Vertex -> Maybe Grid
+makeSimplify (Nothing, False) (l2, True) -- corner starting w/ epsilon
+  =
+  ((Just .) .) . makeMoveDown l2
+makeSimplify (Just l1, False) (Nothing, True) -- corner ending w/ epsilon
+  =
+  ((Just .) .) . makeMoveRight (Just l1)
+makeSimplify _ _ = \_ _ _ -> Nothing -- Has to be neg, then pos! (aka up, then right)
+
+makeMoveDown :: Label -> Edges -> Vertex -> Vertex -> Grid
+makeMoveDown lBot = makeSquare lBot Nothing
+
+makeMoveRight :: Label -> Edges -> Vertex -> Vertex -> Grid
+makeMoveRight = makeSquare Nothing

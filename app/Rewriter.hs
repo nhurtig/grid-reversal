@@ -1,36 +1,32 @@
 -- This module does the work: it reverses words and emits grids.
 module Rewriter where
 
-import Grid (Grid, HEdge (HEdge), VEdge (VEdge), Vertex (Vertex))
+import Grid
 import Numeric.Natural
-import Rewrites (nextInter, rewrite)
+import Rewrites
 import Word
 
 wordToGrid :: BraidWord -> Grid
-wordToGrid [] = Vertex Nothing Nothing
-wordToGrid ((l, e) : rest) =
-  if e
-    then Vertex Nothing $ Just $ HEdge (wordToGrid rest) $ Just l
-    else Vertex (Just $ VEdge (wordToGrid rest) $ Just l) Nothing
+wordToGrid = wordToGridHelper 1
+
+wordToGridHelper :: Vertex -> BraidWord -> Grid
+wordToGridHelper next [] = (next, \_ _ -> Nothing)
+wordToGridHelper next ((l, e) : rest) =
+  if e -- e true means right, e false means up
+    then (next, unionEdges [(next, Rig, l, rightVertex next)] $ snd (wordToGridHelper (rightVertex next) rest))
+    else (next, unionEdges [(next, Up, l, upVertex next)] $ snd (wordToGridHelper (upVertex next) rest))
 
 gridToWord :: Grid -> BraidWord
-gridToWord v = case nextInter v of
-  Nothing -> []
-  Just (nextV, mGen) ->
-    case mGen of
-      Just gen -> gen : gridToWord nextV
-      Nothing -> gridToWord nextV
+gridToWord (v, edges) = case nextInter edges v of
+  Nothing -> [] -- done!
+  Just (nextV, gen) ->
+    gen : gridToWord (nextV, edges)
 
 -- The main function!
 reverseWord :: BraidWord -> (BraidWord, Grid)
 reverseWord w =
   let g = reverseGrid $ wordToGrid w
    in (gridToWord g, g)
-
-gridLength :: Grid -> Natural
-gridLength v = case nextInter v of
-  Nothing -> 0
-  Just (nextV, _) -> 1 + gridLength nextV
 
 reverseGrid :: Grid -> Grid
 reverseGrid v = tryReverseGrid v 0

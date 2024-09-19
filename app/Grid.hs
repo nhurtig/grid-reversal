@@ -7,36 +7,61 @@ import Numeric.Natural
 
 type Label = Maybe Natural
 
-type Generator = (Natural, Bool) -- bool is positive when sigma is positive
+type Generator = (Label, Bool) -- bool is positive when sigma is positive;
+-- Nothing represents epsilon
+
+-- Vertices are just numbers that represent them
+type Vertex = Natural
+
+-- create a new vertex to the right of given one
+rightVertex :: Vertex -> Vertex
+rightVertex n = 2 * n + 1
+
+-- create a new vertex to the above given one
+upVertex :: Vertex -> Vertex
+upVertex n = 2 * n
 
 -- If we start from the bottom left corner and only take steps
 -- right or up, we are guaranteed to be able to read the original
 -- word and any intermediate word before it's fully reversed
-data Vertex = Vertex {up :: Maybe VEdge, right :: Maybe HEdge} deriving (Eq, Show)
+data Direction = Rig | Up deriving (Eq, Show)
 
-data HEdge = HEdge {next :: Vertex, label :: Label} deriving (Eq, Show)
+type Edges = Vertex -> Direction -> Maybe (Vertex, Label)
 
-data VEdge = VEdge {next :: Vertex, label :: Label} deriving (Eq, Show)
+-- adds the given edges to the Edges, replacing existing ones
+unionEdges :: [(Vertex, Direction, Label, Vertex)] -> Edges -> Edges
+unionEdges [] edges v d = edges v d
+unionEdges ((v1, d, l, v2) : rest) edges v dir
+  | v1 == v && d == dir = Just (v2, l)
+  | otherwise = unionEdges rest edges v d
 
-type EdgeInfo = (Vertex, Maybe Generator)
+edgeNext :: Edges -> Vertex -> Direction -> Maybe EdgeInfo
+edgeNext edges v d = do
+  (newV, l) <- edges v d
+  Just
+    ( newV,
+      ( l,
+        case d of
+          Up -> False
+          Rig -> True
+      )
+    )
 
-class Edge a where
-  info :: a -> EdgeInfo
-  info a = (nxt a, gen a)
-  nxt :: a -> Vertex
-  gen :: a -> Maybe Generator
+-- Visits the next vertex in the intermediate word (go right if possible,
+-- if not go up, if not give up, it's the end
+nextInter :: Edges -> Vertex -> Maybe EdgeInfo
+nextInter edges v = case edgeNext edges v Rig of
+  Just info -> Just info
+  Nothing -> edgeNext edges v Up
 
-instance Edge HEdge where
-  nxt (HEdge n _) = n
-  gen (HEdge _ l) = do
-    index <- l
-    Just (index, True)
-
-instance Edge VEdge where
-  nxt (VEdge n _) = n
-  gen (VEdge _ l) = do
-    index <- l
-    Just (index, False)
+type EdgeInfo = (Vertex, Generator)
 
 -- Grids are really just the bottom-left corner of themselves
-type Grid = Vertex
+-- and some edges
+type Grid = (Vertex, Edges)
+
+-- Length of the intermediate word, including epsilons
+gridLength :: Grid -> Natural
+gridLength (v, edges) = case nextInter edges v of
+  Nothing -> 0
+  Just (nextV, _) -> 1 + gridLength (nextV, edges)
