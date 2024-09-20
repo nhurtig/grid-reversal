@@ -5,6 +5,7 @@ import System.Process (callProcess)
 import Viz (toViz)
 import Word (showWord, stringToWord)
 import WordReversal (reverseString)
+import CompletedGrid
 
 main :: IO ()
 main = do
@@ -35,6 +36,7 @@ handleInput str =
                         putStrLn $ reverseString str
                         putStrLn "Grid reversed word is:"
                         putStrLn $ showWord rWord
+                        print $ complete g
 
 tryDot :: FilePath -> FilePath -> IO ()
 tryDot dotFile pdfFile = do

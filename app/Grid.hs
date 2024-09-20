@@ -29,11 +29,23 @@ data Direction = Rig | Up deriving (Eq, Show)
 type Edges = Vertex -> Direction -> Maybe (Vertex, Label)
 
 -- adds the given edges to the Edges, replacing existing ones
-unionEdges :: [(Vertex, Direction, Label, Vertex)] -> Edges -> Edges
-unionEdges [] edges v d = edges v d
-unionEdges ((v1, dir, l, v2) : rest) edges v d
-  | v1 == v && dir == d = Just (v2, l)
-  | otherwise = unionEdges rest edges v d
+unionEdges :: Eq v => Eq dir => [(v, dir, info, v)] -> (v -> dir -> Maybe (v, info)) -> v -> dir-> Maybe (v, info)
+unionEdges new = changeEdges $ map (\(v, d, i, v2) -> (v, d, Just (v2, i))) new
+
+removeEdges :: Eq v => Eq dir => [(v, dir)] -> (v -> dir -> Maybe (v, info)) -> v -> dir-> Maybe (v, info)
+removeEdges new = changeEdges $ map (\(v, d) -> (v, d, Nothing)) new
+
+changeEdges :: Eq v => Eq dir => [(v, dir, Maybe (v, info))] -> (v -> dir -> Maybe (v, info)) -> v -> dir-> Maybe (v, info)
+changeEdges [] edges v d = edges v d
+changeEdges ((v1, dir, next) : rest) edges v d
+  | v1 == v && dir == d = next
+  | otherwise = changeEdges rest edges v d
+
+
+combineEdges :: Eq v => Eq dir => (v -> dir -> Maybe (v, info)) -> (v -> dir -> Maybe (v, info)) -> v -> dir -> Maybe (v, info)
+combineEdges e1 e2 v d = case e1 v d of
+  Nothing -> e2 v d
+  Just x -> Just x
 
 edgeNext :: Edges -> Vertex -> Direction -> Maybe EdgeInfo
 edgeNext edges v d = do
