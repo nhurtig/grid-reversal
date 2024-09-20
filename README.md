@@ -1,5 +1,8 @@
 # Grid Reversal
 
+Nat's idea for a proof outline:
+[https://www.overleaf.com/read/gvdryjvjkwmy#07062e](https://www.overleaf.com/read/gvdryjvjkwmy#07062e)
+
 Use:
 
 1. cabal run
