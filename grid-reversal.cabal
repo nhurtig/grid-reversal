@@ -82,4 +82,4 @@ test-suite tests
     build-depends:    base ^>=4.17.2.1, HUnit, random
     hs-source-dirs:   tests, app
     default-language: Haskell2010
-    other-modules: Grid, Rewrites, Rewriter, Word, WordReversal, RandomWord
+    other-modules: Grid, Rewrites, Rewriter, Word, WordReversal, RandomWord, CompletedGrid, UndirectedGrid, Viz

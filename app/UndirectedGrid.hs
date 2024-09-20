@@ -32,3 +32,8 @@ undirectRight :: Grid -> UndirectedEdges
 undirectRight (v, e) = case e v Rig of
   Nothing -> \_ _ -> Nothing
   Just (vNext, l) -> unionEdges [(v, Right, l, vNext), (vNext, Left, l, v)] $ undirect (vNext, e)
+
+direct :: UndirectedEdges -> Edges
+direct v e d = case d of
+  Up -> v e Top
+  Rig -> v e Right
