@@ -25,10 +25,10 @@ undirectGrid (v, e) = (v, undirect (v, e))
 undirect :: Grid -> UndirectedEdges
 undirect (v, e) = case e v Up of
   Nothing -> undirectRight (v, e)
-  Just (vNext, l) -> unionEdges [(v, Top, l, vNext), (vNext, Bottom, l, vNext)] $ combineEdges (undirectRight (v, e)) $ undirect (vNext, e)
+  Just (vNext, l) -> unionEdges [(v, Top, l, vNext), (vNext, Bottom, l, v)] $ combineEdges (undirectRight (v, e)) $ undirect (vNext, e)
 
 -- assume the Up edge isn't there
 undirectRight :: Grid -> UndirectedEdges
 undirectRight (v, e) = case e v Rig of
   Nothing -> \_ _ -> Nothing
-  Just (vNext, l) -> unionEdges [(v, Top, l, vNext), (vNext, Bottom, l, vNext)] $ undirect (vNext, e)
+  Just (vNext, l) -> unionEdges [(v, Right, l, vNext), (vNext, Left, l, v)] $ undirect (vNext, e)
