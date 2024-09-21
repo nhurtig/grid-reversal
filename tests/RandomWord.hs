@@ -70,4 +70,8 @@ testManyWordsComplete count wordLength strandCount gen =
 
 testWordComplete :: BraidWord -> Test
 testWordComplete w = let str = showWord w in
-  TestLabel str $ TestCase (assertEqual ("Grid should complete on " ++ str ++ ", real word " ++ show w ++ ", error " ++ show ((complete . snd . reverseWord) w)) True (isOK $ complete . snd . reverseWord $ w))
+  TestLabel str $ TestCase (assertEqual ("Grid should be complete on " ++ str) Nothing
+  (case complete . snd . reverseWord $ w of
+    Err err -> Just err
+    OK c -> validate c w
+    ))

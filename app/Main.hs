@@ -36,7 +36,11 @@ handleInput str =
                         putStrLn $ reverseString str
                         putStrLn "Grid reversed word is:"
                         putStrLn $ showWord rWord
-                        print $ complete g
+                        case complete g of
+                          Err e -> putStrLn e
+                          OK c -> do
+                            print c
+                            print $ validate c word
 
 tryDot :: FilePath -> FilePath -> IO ()
 tryDot dotFile pdfFile = do

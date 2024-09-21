@@ -1,17 +1,18 @@
 -- This is the definition that we'd like to use;
 -- Grid is a partial grid
+{-# LANGUAGE TupleSections #-}
 module CompletedGrid where
 
 import Grid
 import Numeric.Natural
 import Rewrites
 import UndirectedGrid
+import Word
 import Prelude hiding (Either, Left, Right)
 
 data CompletedGrid
-  = EmptyGrid -- legit empty; not the epsilon stuff
-  | SigmaSwap {left :: Natural, top :: Natural} -- first of the 3 rewrite cells
-  | YangBaxter {left :: Natural, top :: Natural}
+  = SigmaSwap {leftLabel :: Natural, topLabel :: Natural} -- first of the 3 rewrite cells
+  | YangBaxter {leftLabel :: Natural, topLabel :: Natural}
   | SigmaCancel Natural
   | AllEpsilon -- first of the 3 simplify cells
   | TopBottom Natural -- non epsilons on top, bottom
@@ -22,7 +23,6 @@ data CompletedGrid
 
 -- read along the right, up axes (NOT the right, down axes)
 getWord :: CompletedGrid -> Side -> [Label]
-getWord EmptyGrid _ = []
 getWord (SigmaSwap leftL topL) side
   | side `elem` [Top, Bottom] = [Just topL]
   | otherwise = [Just leftL]
@@ -30,10 +30,10 @@ getWord (YangBaxter leftL topL) side = case side of
   Left -> [Just leftL]
   Bottom -> [Just topL, Just leftL]
   Top -> [Just topL]
-  Right -> [Just leftL, Just topL]
+  Right -> [Just topL, Just leftL]
 getWord (SigmaCancel i) side
   | side `elem` [Left, Top] = [Just i]
-  | otherwise = []
+  | otherwise = [Nothing]
 getWord AllEpsilon _ = [Nothing]
 getWord (TopBottom i) side
   | side `elem` [Top, Bottom] = [Just i]
@@ -41,14 +41,39 @@ getWord (TopBottom i) side
 getWord (LeftRight i) side
   | side `elem` [Left, Right] = [Just i]
   | otherwise = [Nothing]
-getWord (Vertical topL bottom) side
-  | side `elem` [Left, Right] = getWord bottom side ++ getWord topL side
-  | side == Top = getWord topL side
+getWord (Vertical top bottom) side
+  | side `elem` [Left, Right] = getWord bottom side ++ getWord top side
+  | side == Top = getWord top side
   | otherwise = getWord bottom side
-getWord (Horizontal leftL right) side
-  | side `elem` [Top, Bottom] = getWord leftL side ++ getWord right side
-  | side == Left = getWord leftL side
+getWord (Horizontal left right) side
+  | side `elem` [Top, Bottom] = getWord left side ++ getWord right side
+  | side == Left = getWord left side
   | otherwise = getWord right side
+
+-- returns problem statement o.w. Nothing. Input word
+-- is the input word (left inverses, top regulars). By
+-- unicity, don't need to check the other sides.
+validate :: CompletedGrid -> BraidWord -> Maybe String
+validate g w = case validGrid g of
+  Just err -> Just err
+  Nothing ->
+    let leftLabels = getWord g Left
+        leftWord = map (, False) leftLabels
+        topLabels = getWord g Top
+        topWord = map (, True) topLabels
+        gridWord = leftWord ++ topWord
+     in if gridWord == w then Nothing else Just $ "Words don't match!" ++ showWord w ++ " " ++ showWord gridWord
+
+-- checks that all the constraints are correct
+validGrid :: CompletedGrid -> Maybe String
+validGrid (SigmaSwap i j) = if metric i j >= 2 then Nothing else Just "Swap too close!"
+validGrid (YangBaxter i j) = if metric i j == 1 then Nothing else Just "Yang baxter wrong!"
+validGrid (Vertical top bottom) = if getWord top Bottom == getWord bottom Top then Nothing else Just $ "Top+bottom don't match!" ++ show (getWord top Bottom) ++ show (getWord bottom Top)
+validGrid (Horizontal left right) = if getWord left Right == getWord right Left then Nothing else Just $ "Left+right don't match!" ++ show (getWord left Right) ++ " " ++ show (getWord left Top) ++ show (getWord right Left) ++ show (getWord right Top)
+validGrid (SigmaCancel _) = Nothing
+validGrid (TopBottom _) = Nothing
+validGrid (LeftRight _) = Nothing
+validGrid AllEpsilon = Nothing
 
 data Either err ok = OK ok | Err err deriving (Eq, Show)
 
@@ -63,7 +88,7 @@ completeUndirect :: UndirectedGrid -> Either String CompletedGrid
 completeUndirect (botLeft, e) = case e botLeft Top of
   Nothing -> Err "Bottom left corner doesn't have an up!" -- somehow the bottom left corner doesn't have an up!
   Just (vUp, _) -> case e vUp Top of
-    Just _ -> paste Bottom $ seam e Right vUp -- vUp isn't the top left corner; must be a seam!
+    Just _ -> paste Top $ seam e Right vUp -- vUp isn't the top left corner; must be a seam!
     Nothing -> case e vUp Right of -- vUp is the top left corner
       Nothing -> Err "Top left corner doesn't have a right!" -- somehow top left corner doesn't have a right!
       Just (vUpRight, _) -> case e vUpRight Right of
